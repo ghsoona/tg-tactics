@@ -38,4 +38,3 @@ if st.button("Predict Injury Risk"):
 
     except requests.exceptions.RequestException as e:
         st.error(f"API Connection Error: {e}")
-]
