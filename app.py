@@ -1,26 +1,41 @@
-from flask import Flask, request, jsonify
-import numpy as np
-import joblib  # Make sure "injury_model.pkl" exists
+import requests
+import streamlit as st
 
-app = Flask(__name__)
+# API URL
+api_url = "https://requirements-wwub.onrender.com/predict"  # Replace with your actual Render API URL
 
-# Load the trained model
-model = joblib.load("injury_model.pkl")
+st.title("T&G Tactics - Player Injury Risk Prediction ⚽🚑")
 
-@app.route('/')
-def home():
-    return "T&G Tactics API is running!"
+# Player Input Fields
+player_name = st.text_input("Enter Player Name")
+height = st.number_input("Height (cm)", min_value=100, max_value=250, value=180)
+weight = st.number_input("Weight (kg)", min_value=40, max_value=150, value=75)
+pace = st.number_input("Pace (Speed)", min_value=0, max_value=99, value=80)
+cumulative_minutes = st.number_input("Cumulative Minutes Played", min_value=0, value=5000)
+avg_days_injured = st.number_input("Average Days Injured (Previous Seasons)", min_value=0, value=10)
 
-@app.route('/predict', methods=['POST'])
-def predict():
+# Predict Button
+if st.button("Predict Injury Risk"):
+    data = {"features": [height, weight, pace, cumulative_minutes, avg_days_injured]}
+
     try:
-        data = request.get_json()
-        features = np.array(data["features"]).reshape(1, -1)
-        prediction = model.predict(features)
-        return jsonify({"injury_risk": int(prediction[0])})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        response = requests.post(api_url, json=data)
+        if response.status_code == 200:
+            result = response.json()
+            injury_risk = result.get("injury_risk", 0)
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+            if injury_risk == 1:
+                st.warning(f"{player_name} is at HIGH RISK of injury! 🚑")
+                st.write("🔹 **Recommended Tactical Adjustments:**")
+                st.write("✅ Reduce playing time")
+                st.write("✅ Focus on recovery and light training")
+                st.write("✅ Consider substituting during second half")
+            else:
+                st.success(f"{player_name} is at LOW RISK of injury ✅")
+                st.write("🔹 No special adjustments needed.")
+        else:
+            st.error("Failed to get response from API. Please check the server.")
 
+    except requests.exceptions.RequestException as e:
+        st.error(f"API Connection Error: {e}")
+]
